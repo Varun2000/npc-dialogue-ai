@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPC Dialogue AI — Aethermoor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0d1117;
+      --surface:    #161b22;
+      --surface2:   #21262d;
+      --border:     #30363d;
+      --accent:     #58a6ff;
+      --accent2:    #3fb950;
+      --text:       #e6edf3;
+      --text-muted: #8b949e;
+      --user-bg:    #1f4068;
+      --npc-bg:     #1e2a1e;
+      --danger:     #f85149;
+      --radius:     10px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ──────────────────────────────── */
+    #sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 12px;
+      gap: 8px;
+    }
+
+    #sidebar h2 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 8px 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .npc-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      background: none;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s;
+      font-size: 14px;
+    }
+    .npc-btn:hover { background: var(--surface2); }
+    .npc-btn.active {
+      background: var(--surface2);
+      border-color: var(--accent);
+    }
+    .npc-btn .avatar { font-size: 22px; }
+    .npc-btn .info .name { font-weight: 600; font-size: 14px; }
+    .npc-btn .info .role { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    #sidebar-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+    #sidebar-footer a { color: var(--accent); text-decoration: none; }
+
+    /* ── Main area ────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ──────────────────────────────── */
+    #chat-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      min-height: 64px;
+    }
+    #header-avatar { font-size: 30px; }
+    #header-info .npc-name { font-size: 17px; font-weight: 700; }
+    #header-info .npc-role { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    #emotion-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    #reset-btn {
+      margin-left: 10px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: var(--radius);
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    #reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Messages ─────────────────────────────── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+    #messages::-webkit-scrollbar { width: 6px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .message {
+      display: flex;
+      gap: 10px;
+      max-width: 80%;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message.npc  { align-self: flex-start; }
+
+    .msg-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 100%;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .message.user .msg-bubble {
+      background: var(--user-bg);
+      border-bottom-right-radius: 3px;
+    }
+    .message.npc .msg-bubble {
+      background: var(--npc-bg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 3px;
+    }
+
+    .typing-indicator span {
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      margin: 0 1px;
+      animation: bounce 1.2s infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40%           { transform: translateY(-6px); }
+    }
+
+    /* ── RAG indicator ───────────────────────── */
+    .rag-tag {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: #1a3a1a;
+      color: var(--accent2);
+      border: 1px solid #2d5a2d;
+      margin-top: 5px;
+    }
+
+    /* ── Welcome screen ──────────────────────── */
+    #welcome {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      gap: 12px;
+      text-align: center;
+      padding: 40px;
+    }
+    #welcome .big-emoji { font-size: 48px; }
+    #welcome h3 { font-size: 20px; color: var(--text); }
+    #welcome p { font-size: 14px; max-width: 340px; line-height: 1.6; }
+
+    /* ── Input bar ───────────────────────────── */
+    #input-area {
+      border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      background: var(--surface);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    #msg-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 14px;
+      resize: none;
+      max-height: 120px;
+      min-height: 42px;
+      line-height: 1.5;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    #msg-input:focus { border-color: var(--accent); }
+    #msg-input::placeholder { color: var(--text-muted); }
+
+    #send-btn {
+      height: 42px;
+      padding: 0 18px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #send-btn:not(:disabled):hover { opacity: 0.85; }
+
+    /* ── Emotion color theming ───────────────── */
+    body[data-emotion="friendly"]  { --npc-bg: #1a2e1a; }
+    body[data-emotion="hostile"]   { --npc-bg: #2e1a1a; }
+    body[data-emotion="fearful"]   { --npc-bg: #2e2a1a; }
+    body[data-emotion="excited"]   { --npc-bg: #1a1a2e; }
+    body[data-emotion="neutral"]   { --npc-bg: #1e2a1e; }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 600px) {
+      #sidebar { display: none; }
+    }
+  </style>
+</head>
+<body data-emotion="neutral">
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <h2>Characters</h2>
+  <div id="npc-list">
+    <div style="color: var(--text-muted); font-size: 13px; padding: 8px;">Loading NPCs…</div>
+  </div>
+  <div id="sidebar-footer">
+    NPC Dialogue AI<br/>
+    Mistral · ChromaDB · FastAPI<br/>
+    <a href="https://github.com/Varun2000" target="_blank">github.com/Varun2000</a>
+  </div>
+</aside>
+
+<!-- Main -->
+<div id="main">
+  <!-- Header -->
+  <div id="chat-header">
+    <div id="header-avatar">🌍</div>
+    <div id="header-info">
+      <div class="npc-name">Aethermoor</div>
+      <div class="npc-role">Select a character to begin</div>
+    </div>
+    <div id="emotion-badge" style="display:none">
+      <span id="emotion-emoji">😐</span>
+      <span id="emotion-label">NEUTRAL</span>
+    </div>
+    <button id="reset-btn" style="display:none" onclick="resetSession()">↺ Reset</button>
+  </div>
+
+  <!-- Messages / Welcome -->
+  <div id="messages" style="display:none"></div>
+  <div id="welcome">
+    <div class="big-emoji">⚔️</div>
+    <h3>Welcome to Aethermoor</h3>
+    <p>Choose a character from the sidebar to begin your conversation. Each NPC has unique knowledge, personality, and emotional reactions.</p>
+  </div>
+
+  <!-- Input -->
+  <div id="input-area">
+    <textarea
+      id="msg-input"
+      placeholder="Select a character first…"
+      disabled
+      rows="1"
+      onkeydown="handleKey(event)"
+      oninput="autoResize(this)"
+    ></textarea>
+    <button id="send-btn" disabled onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+  const API = '';   // empty = same origin
+  let currentNpc   = null;
+  let sessionId    = null;
+  let isStreaming  = false;
+
+  // ── Boot ──────────────────────────────────────────────────────
+  async function loadNPCs() {
+    try {
+      const res  = await fetch(`${API}/npcs`);
+      const npcs = await res.json();
+      const list = document.getElementById('npc-list');
+      list.innerHTML = '';
+      npcs.forEach(npc => {
+        const btn = document.createElement('button');
+        btn.className = 'npc-btn';
+        btn.dataset.id = npc.id;
+        btn.innerHTML = `
+          <span class="avatar">${npc.avatar_emoji}</span>
+          <div class="info">
+            <div class="name">${npc.name}</div>
+            <div class="role">${npc.role}</div>
+          </div>`;
+        btn.onclick = () => selectNPC(npc);
+        list.appendChild(btn);
+      });
+    } catch(e) {
+      document.getElementById('npc-list').innerHTML =
+        `<div style="color:var(--danger);font-size:12px;padding:8px">⚠ Cannot reach API. Is the server running?</div>`;
+    }
+  }
+
+  // ── NPC selection ─────────────────────────────────────────────
+  function selectNPC(npc) {
+    currentNpc = npc;
+    sessionId  = null;
+
+    // Sidebar highlight
+    document.querySelectorAll('.npc-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.id === npc.id));
+
+    // Header
+    document.getElementById('header-avatar').textContent = npc.avatar_emoji;
+    document.getElementById('header-info').querySelector('.npc-name').textContent = npc.name;
+    document.getElementById('header-info').querySelector('.npc-role').textContent = npc.role;
+
+    // Emotion badge
+    const badge = document.getElementById('emotion-badge');
+    badge.style.display = 'flex';
+    updateEmotionBadge(npc.default_emotion, getEmotionEmoji(npc.default_emotion));
+
+    document.getElementById('reset-btn').style.display = '';
+
+    // Clear messages
+    const msgs = document.getElementById('messages');
+    msgs.innerHTML = '';
+    msgs.style.display = 'flex';
+    document.getElementById('welcome').style.display = 'none';
+
+    // Enable input
+    const input = document.getElementById('msg-input');
+    input.placeholder = `Say something to ${npc.name}…`;
+    input.disabled = false;
+    document.getElementById('send-btn').disabled = false;
+    input.focus();
+
+    // System intro message
+    appendNPCMessage(`*${npc.name} turns to face you.*`, false, npc.avatar_emoji);
+  }
+
+  // ── Send message ──────────────────────────────────────────────
+  async function sendMessage() {
+    const input = document.getElementById('msg-input');
+    const text  = input.value.trim();
+    if (!text || isStreaming) return;
+
+    input.value = '';
+    autoResize(input);
+    isStreaming = true;
+    document.getElementById('send-btn').disabled = true;
+    input.disabled = true;
+
+    appendUserMessage(text);
+
+    // Typing indicator
+    const typingEl = appendTypingIndicator();
+
+    try {
+      const res = await fetch(`${API}/chat/${currentNpc.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, session_id: sessionId }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      typingEl.remove();
+      const { el: npcBubble, textNode } = appendNPCMessageStreaming(currentNpc.avatar_emoji);
+
+      // Read SSE stream
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
+      let   ragUsed = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6);
+
+          if (payload === '[DONE]') break;
+
+          if (payload.startsWith('[METADATA]')) {
+            const meta = JSON.parse(payload.slice(10).trim());
+            sessionId = meta.session_id;
+            ragUsed   = meta.rag_context_used;
+            updateEmotionBadge(meta.emotion, meta.emotion_emoji);
+            document.body.dataset.emotion = meta.emotion;
+          } else {
+            textNode.textContent += payload;
+            scrollToBottom();
+          }
+        }
+      }
+
+      // RAG tag
+      if (ragUsed) {
+        const tag = document.createElement('div');
+        tag.className = 'rag-tag';
+        tag.textContent = '📚 Lore context retrieved';
+        npcBubble.querySelector('.msg-bubble').appendChild(tag);
+      }
+
+    } catch(err) {
+      typingEl?.remove();
+      appendNPCMessage(`*(Something went wrong: ${err.message})*`, false, currentNpc.avatar_emoji);
+    }
+
+    isStreaming = false;
+    document.getElementById('send-btn').disabled = false;
+    input.disabled = false;
+    input.focus();
+    scrollToBottom();
+  }
+
+  // ── Reset ─────────────────────────────────────────────────────
+  async function resetSession() {
+    if (!sessionId || !currentNpc) return;
+    await fetch(`${API}/sessions/${sessionId}`, { method: 'DELETE' });
+    selectNPC(currentNpc);
+  }
+
+  // ── DOM helpers ───────────────────────────────────────────────
+  function appendUserMessage(text) {
+    const div = document.createElement('div');
+    div.className = 'message user';
+    div.innerHTML = `
+      <div class="msg-avatar">🧑</div>
+      <div class="msg-bubble">${escHtml(text)}</div>`;
+    document.getElementById('messages').appendChild(div);
+    scrollToBottom();
+  }
+
+  function appendNPCMessage(text, rag, emoji) {
+    const div = document.createElement('div');
+    div.className = 'message npc';
+    div.innerHTML = `
+      <div class="msg-avatar">${emoji || '🌍'}</div>
+      <div class="msg-bubble">${escHtml(text)}${rag ? '<div class="rag-tag">📚 Lore context retrieved</div>' : ''}</div>`;
+    document.getElementById('messages').appendChild(div);
+    scrollToBottom();
+    return div;
+  }
+
+  function appendNPCMessageStreaming(emoji) {
+    const div  = document.createElement('div');
+    div.className = 'message npc';
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    const textNode = document.createTextNode('');
+    bubble.appendChild(textNode);
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'msg-avatar';
+    avatarDiv.textContent = emoji || '🌍';
+    div.appendChild(avatarDiv);
+    div.appendChild(bubble);
+    document.getElementById('messages').appendChild(div);
+    scrollToBottom();
+    return { el: div, textNode };
+  }
+
+  function appendTypingIndicator() {
+    const div = document.createElement('div');
+    div.className = 'message npc';
+    div.innerHTML = `
+      <div class="msg-avatar">${currentNpc?.avatar_emoji || '🌍'}</div>
+      <div class="msg-bubble typing-indicator">
+        <span></span><span></span><span></span>
+      </div>`;
+    document.getElementById('messages').appendChild(div);
+    scrollToBottom();
+    return div;
+  }
+
+  function updateEmotionBadge(emotion, emoji) {
+    document.getElementById('emotion-emoji').textContent  = emoji;
+    document.getElementById('emotion-label').textContent  = emotion.toUpperCase();
+    document.getElementById('emotion-badge').style.borderColor =
+      { friendly:'#3fb950', hostile:'#f85149', fearful:'#d29922', excited:'#58a6ff', neutral:'#30363d' }[emotion] || '#30363d';
+  }
+
+  function getEmotionEmoji(emotion) {
+    return { neutral:'😐', friendly:'😊', hostile:'😠', fearful:'😰', excited:'🤩' }[emotion] || '😐';
+  }
+
+  function scrollToBottom() {
+    const m = document.getElementById('messages');
+    m.scrollTop = m.scrollHeight;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
+  loadNPCs();
+</script>
+</body>
+</html>
