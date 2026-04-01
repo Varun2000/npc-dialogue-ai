@@ -1,5 +1,8 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pathlib import Path
+
+ENV_FILE = Path(__file__).parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -10,10 +13,9 @@ class Settings(BaseSettings):
     rag_top_k: int = 3
 
     class Config:
-        env_file = ".env"
+        env_file = str(ENV_FILE)
 
 
-# Enter Model API Key in the param
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

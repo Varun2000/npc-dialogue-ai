@@ -83,12 +83,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve the frontend
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
-if FRONTEND_DIR.exists():
-    app.mount("/app", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
-
-
 # ── Routes ─────────────────────────────────────────────────────────────────
 
 @app.get("/health")
@@ -233,3 +227,8 @@ def reset_session(session_id: str):
         current_emotion=npc.default_emotion,
     )
     return {"status": "reset", "session_id": session_id}
+
+
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
