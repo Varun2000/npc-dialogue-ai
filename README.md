@@ -84,7 +84,7 @@ uvicorn backend.main:app --reload
 
 ### 4. Open the UI
 
-Visit **http://localhost:8000/app** in your browser.
+Visit **http://localhost:8000** in your browser.
 
 Or use the API directly:
 
