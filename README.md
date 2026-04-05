@@ -12,7 +12,7 @@
 
 ## Demo
 
-[Demo](https://github.com/Varun2000/npc-dialogue-ai/blob/main/assets/demo.mov)
+https://github.com/user-attachments/assets/33b1496b-16dc-4825-8fcd-dee493e0fccd
 
 ---
 
