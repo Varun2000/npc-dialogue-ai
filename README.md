@@ -2,13 +2,16 @@
 
 > **LLM-powered NPC dialogue system** with RAG grounding, persona consistency, dynamic emotion state, and real-time streaming. Built with Mistral AI, ChromaDB, and FastAPI.
 
-> **Work InProgress**
-
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)
 ![Mistral AI](https://img.shields.io/badge/Mistral_AI-mistral--small-orange)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-0.5-purple)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
+---
+
+## Demo
+
 
 ---
 
@@ -28,12 +31,12 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Browser (SSE Client)                  │
+│                    Browser (SSE Client)                 │
 └──────────────────────┬──────────────────────────────────┘
                        │ POST /chat/{npc_id}
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│                   FastAPI Backend                        │
+│                   FastAPI Backend                       │
 │                                                         │
 │  1. EmotionService  →  update NPC emotional state       │
 │  2. RAGService      →  retrieve relevant lore chunks    │
@@ -208,7 +211,6 @@ npc-dialogue-ai/
 
 - **Fine-tuning**: Fine-tune Mistral on in-character NPC dialogue samples for even stronger persona lock-in
 - **Persistent sessions**: Swap the in-memory dict for Redis to survive server restarts
-- **Vector similarity for emotion**: Replace keyword heuristics with an embedding-based sentiment classifier
 - **Multi-NPC conversations**: Route messages through multiple NPC agents with shared memory
 - **Unity/Unreal plugin**: Expose the SSE endpoint as a game engine plugin
 
